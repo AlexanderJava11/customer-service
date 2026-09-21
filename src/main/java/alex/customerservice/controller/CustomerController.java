@@ -45,4 +45,10 @@ public class CustomerController {
 
         return customerService.update(id, customer);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        customerService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

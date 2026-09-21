@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import alex.customerservice.client.BookingClient;
+import org.springframework.web.client.RestClientException;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ import java.util.List;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final BookingClient bookingClient;
 
     @Transactional(readOnly = true)
     public List<Customer> findAll() {
@@ -51,5 +54,25 @@ public class CustomerService {
         customer.setPhone(input.getPhone());
 
         return customerRepository.save(customer);
+    }
+    @Transactional
+    public void delete(Long id) {
+        Customer customer = findById(id);
+
+        try {
+            if (bookingClient.hasActiveBookings(id)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Kunden kan inte tas bort eftersom kunden har en aktiv bokning."
+                );
+            }
+        } catch (RestClientException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Kunden kan inte tas bort eftersom Booking Service inte är tillgänglig."
+            );
+        }
+
+        customerRepository.delete(customer);
     }
 }
