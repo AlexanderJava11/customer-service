@@ -1,6 +1,8 @@
 package alex.customerservice.client;
 
+import alex.customerservice.security.JwtService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -10,9 +12,11 @@ public class BookingClient {
 
     private final RestTemplate restTemplate;
     private final String bookingServiceUrl;
+    private final JwtService jwtService;
 
     public BookingClient(
-            @Value("${booking.service.url}") String bookingServiceUrl) {
+            @Value("${booking.service.url}") String bookingServiceUrl,
+            JwtService jwtService) {
 
         SimpleClientHttpRequestFactory factory =
                 new SimpleClientHttpRequestFactory();
@@ -22,17 +26,28 @@ public class BookingClient {
 
         this.restTemplate = new RestTemplate(factory);
         this.bookingServiceUrl = bookingServiceUrl.replaceAll("/+$", "");
+        this.jwtService = jwtService;
     }
 
     public boolean hasActiveBookings(Long customerId) {
-        Boolean result = restTemplate.getForObject(
+
+        String token = jwtService.generateToken("customer-service");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Boolean> response = restTemplate.exchange(
                 bookingServiceUrl
                         + "/api/bookings/customer/"
                         + customerId
                         + "/active",
+                HttpMethod.GET,
+                entity,
                 Boolean.class
         );
 
-        return Boolean.TRUE.equals(result);
+        return Boolean.TRUE.equals(response.getBody());
     }
 }
